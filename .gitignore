@@ -1,0 +1,22 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Temporary data folders
+data/raw/
+data/ml_ready/
+data/processed/
+
+# Trained models (binary, regenerable)
+models/
+
+# Presentation & design documents
+HIGH_LEVEL_DESIGN.md
+PROJECT_JOURNAL.md
+LOW_LEVEL_DESIGN.md
+PROJECT_OVERVIEW_FOR_PROFESSOR.md
+
+# OS generated files
+.DS_Store
+Thumbs.db

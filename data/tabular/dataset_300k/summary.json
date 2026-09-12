@@ -1,0 +1,18 @@
+{
+  "set_name": "dataset_300k",
+  "folder": "data\\tabular\\dataset_300k",
+  "dataset_csv": "data\\tabular\\dataset_300k\\dataset_300k.csv",
+  "scenario_pool_json": "data\\tabular\\dataset_300k\\dataset_300k_pool.json",
+  "num_scenarios": 15000,
+  "num_contingency_cases": 300000,
+  "total_rows": 300000,
+  "total_columns": 63,
+  "converged_cases": 285000,
+  "non_converged_cases": 15000,
+  "label_distribution": {
+    "Safe": 109893,
+    "Alert": 86057,
+    "Critical": 104050
+  },
+  "elapsed_seconds": 1030.01
+}

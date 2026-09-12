@@ -1,0 +1,18 @@
+{
+  "set_name": "dataset_100k",
+  "folder": "data\\tabular\\dataset_100k",
+  "dataset_csv": "data\\tabular\\dataset_100k\\dataset_100k.csv",
+  "scenario_pool_json": "data\\tabular\\dataset_100k\\dataset_100k_pool.json",
+  "num_scenarios": 5000,
+  "num_contingency_cases": 100000,
+  "total_rows": 100000,
+  "total_columns": 63,
+  "converged_cases": 95000,
+  "non_converged_cases": 5000,
+  "label_distribution": {
+    "Safe": 36659,
+    "Alert": 28667,
+    "Critical": 34674
+  },
+  "elapsed_seconds": 210.31
+}
