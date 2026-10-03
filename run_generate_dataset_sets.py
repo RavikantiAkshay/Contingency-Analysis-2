@@ -1,19 +1,24 @@
 #!/usr/bin/env python3
 """
-EEQ401 — Multi-Dataset Generation Campaign (100k, 200k, 300k Contingency Cases)
+EEQ401 — Multi-Dataset Generation Campaign (100k, 200k, 300k, 500k, 1M Cases)
 
-Generates 3 distinct large-scale datasets, separated into dedicated directories:
+Generates distinct large-scale datasets, separated into dedicated directories:
   data/tabular/dataset_100k/ (5,000 scenarios  x 20 lines = 100,000 cases)
   data/tabular/dataset_200k/ (10,000 scenarios x 20 lines = 200,000 cases)
   data/tabular/dataset_300k/ (15,000 scenarios x 20 lines = 300,000 cases)
+  data/tabular/dataset_500k/ (25,000 scenarios x 20 lines = 500,000 cases)
+  data/tabular/dataset_1M/   (50,000 scenarios x 20 lines = 1,000,000 cases)
 
-Grand Total: 30,000 unique scenarios (600,000 line contingency cases).
+Grand Total across all 5 tiers: 105,000 unique scenarios (2,100,000 cases).
 
 Guarantees:
-  - Strict zero-repetition: No scenario load pattern is ever repeated across any set.
+  - Strict zero-repetition: Pre-loads all existing scenario pools into a global
+    uniqueness registry, ensuring no scenario load pattern is ever repeated across
+    any past, present, or future dataset.
   - Conforms to schema specification (63 columns).
   - Parallel multi-process execution with live tqdm progress bars.
   - Validates integrity and saves scenario pool JSON + summary metrics.
+  - Excludes intact base cases (focusing strictly on post-contingency responses).
 """
 
 import os
@@ -60,6 +65,15 @@ NORM_AMPS = [
     150.0, 100.0, 100.0, 100.0
 ]
 SQRT3_144 = np.sqrt(3) * 144.0
+
+AVAILABLE_SETS = {
+    '100k': {'name': 'dataset_100k', 'num_scenarios': 5000},
+    '200k': {'name': 'dataset_200k', 'num_scenarios': 10000},
+    '300k': {'name': 'dataset_300k', 'num_scenarios': 15000},
+    '500k': {'name': 'dataset_500k', 'num_scenarios': 25000},
+    '1m':   {'name': 'dataset_1M',   'num_scenarios': 50000},
+    '1000k': {'name': 'dataset_1M',  'num_scenarios': 50000},
+}
 
 
 def _worker_validate_pattern(item: Tuple[Dict[int, float], Dict[str, Any]]) -> Tuple[Dict[int, float], bool]:
@@ -248,6 +262,41 @@ def generate_unique_patterns_parallel(
     return accepted_patterns
 
 
+def load_existing_pools_into_registry(base_output_dir: str) -> Tuple[set, Dict[str, Dict[str, Any]]]:
+    """
+    Scans base_output_dir for existing scenario pool JSON files and loads all
+    canonical pattern keys into a set to strictly prevent duplicate scenarios.
+    Also returns existing set summaries from sets_manifest.json if available.
+    """
+    seen_patterns = set()
+    existing_summaries = {}
+
+    manifest_path = os.path.join(base_output_dir, "sets_manifest.json")
+    if os.path.exists(manifest_path):
+        try:
+            with open(manifest_path, 'r', encoding='utf-8') as f:
+                m_data = json.load(f)
+                for s in m_data.get('sets', []):
+                    existing_summaries[s['set_name']] = s
+        except Exception:
+            pass
+
+    for root, _, files in os.walk(base_output_dir):
+        for f in files:
+            if f.endswith('_pool.json'):
+                pool_path = os.path.join(root, f)
+                try:
+                    with open(pool_path, 'r', encoding='utf-8') as pf:
+                        pool_data = json.load(pf)
+                    for sc in pool_data:
+                        pkey = frozenset((int(b), round(float(s), 2)) for b, s in sc['load_pattern'].items())
+                        seen_patterns.add(pkey)
+                except Exception as e:
+                    print(f"  [WARN] Failed reading '{pool_path}': {e}")
+
+    return seen_patterns, existing_summaries
+
+
 def generate_large_scale_datasets(
     datasets_spec: List[Dict[str, Any]] = None,
     base_seed: int = 1000,
@@ -285,15 +334,23 @@ def generate_large_scale_datasets(
     print(f"  Datasets to Generate   : {len(datasets_spec)}")
     for d in datasets_spec:
         print(f"    - {d['name']:15s}: {d['num_scenarios']:,} scenarios x {n_lines} lines = {d['num_scenarios'] * n_lines:,} cases")
-    print(f"  Total Scenarios        : {total_scenarios_all:,}")
+    print(f"  Total Scenarios To Run : {total_scenarios_all:,}")
     print(f"  Grand Total Cases      : {total_cases_all:,}")
     print(f"  Parallel CPU Workers   : {num_workers}")
     print(f"  Base Output Directory  : {base_output_dir}")
     print("=" * 80)
 
-    seen_patterns = set()
-    rng = np.random.default_rng(base_seed)
-    all_set_summaries = []
+    # 1. Preload any existing pools so NO scenario is ever repeated across runs
+    seen_patterns, existing_summaries = load_existing_pools_into_registry(base_output_dir)
+    if seen_patterns:
+        print(f"  [REGISTRY] Pre-loaded {len(seen_patterns):,} unique scenarios from existing pools.")
+        print(f"             Strict zero-overlap guaranteed across all past and new datasets.")
+    else:
+        print(f"  [REGISTRY] Initialized fresh empty uniqueness registry.")
+
+    rng = np.random.default_rng(base_seed + len(seen_patterns))
+    all_set_summaries = list(existing_summaries.values())
+    newly_generated_summaries = []
 
     # Initialize persistent process pool across all sets
     with mp.Pool(processes=num_workers) as pool:
@@ -388,19 +445,25 @@ def generate_large_scale_datasets(
             with open(os.path.join(set_folder, "summary.json"), 'w', encoding='utf-8') as f:
                 json.dump(summary, f, indent=2)
 
+            # Update summaries list
+            all_set_summaries = [s for s in all_set_summaries if s['set_name'] != set_name]
             all_set_summaries.append(summary)
+            newly_generated_summaries.append(summary)
             print(f"  ✓ {set_name} completed in {set_elapsed:.1f}s ({set_elapsed/60.0:.2f} mins).")
 
-    # Global manifest
+    # Global manifest reflecting all datasets present
     total_elapsed = time.time() - start_total_time
+    total_global_scenarios = sum(s['num_scenarios'] for s in all_set_summaries)
+    total_global_cases = sum(s['num_contingency_cases'] for s in all_set_summaries)
+
     manifest = {
         'timestamp': time.strftime("%Y-%m-%d %H:%M:%S"),
-        'num_sets': len(datasets_spec),
-        'total_scenarios': total_scenarios_all,
-        'total_cases': total_cases_all,
+        'num_sets': len(all_set_summaries),
+        'total_scenarios': total_global_scenarios,
+        'total_cases': total_global_cases,
         'global_unique_scenarios': len(seen_patterns),
-        'total_execution_time_seconds': round(total_elapsed, 2),
-        'total_execution_time_minutes': round(total_elapsed / 60.0, 2),
+        'latest_run_execution_time_seconds': round(total_elapsed, 2),
+        'latest_run_execution_time_minutes': round(total_elapsed / 60.0, 2),
         'sets': all_set_summaries
     }
 
@@ -409,11 +472,14 @@ def generate_large_scale_datasets(
         json.dump(manifest, f, indent=2)
 
     print("\n" + "=" * 80)
-    print(" ALL DATASETS GENERATED SUCCESSFULLY")
+    print(" CAMPAIGN FINISHED")
     print("=" * 80)
-    print(f"  Total Scenarios        : {total_scenarios_all:,}")
-    print(f"  Grand Total Cases      : {total_cases_all:,}")
-    print(f"  Total Execution Time   : {total_elapsed:.1f}s ({total_elapsed/60.0:.2f} mins)")
+    print(f"  Newly Generated Sets   : {len(newly_generated_summaries)}")
+    print(f"  Total Sets on Disk     : {len(all_set_summaries)}")
+    print(f"  Grand Total Scenarios  : {total_global_scenarios:,}")
+    print(f"  Grand Total Cases      : {total_global_cases:,}")
+    print(f"  Global Unique Patterns : {len(seen_patterns):,}")
+    print(f"  Execution Time This Run: {total_elapsed:.1f}s ({total_elapsed/60.0:.2f} mins)")
     print(f"  Global Manifest Saved  : {manifest_path}")
     print("=" * 80 + "\n")
 
@@ -422,6 +488,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Generate large-scale power flow contingency datasets.")
     parser.add_argument('--workers', type=int, default=None, help="Number of parallel worker processes")
     parser.add_argument('--output_dir', type=str, default=os.path.join('data', 'tabular'), help="Output base directory")
+    parser.add_argument(
+        '--sets', nargs='+', default=None,
+        help="Specific dataset sets to generate. Options: 100k, 200k, 300k, 500k, 1m, or all."
+    )
     parser.add_argument('--test', action='store_true', help="Run small test with 5, 10, 15 scenarios")
     args = parser.parse_args()
 
@@ -432,6 +502,23 @@ if __name__ == '__main__':
             {'name': 'dataset_200k', 'num_scenarios': 10},
             {'name': 'dataset_300k', 'num_scenarios': 15},
         ]
+    elif args.sets:
+        spec = []
+        for s in args.sets:
+            s_clean = s.lower().replace('dataset_', '')
+            if s_clean in ('all',):
+                spec = [
+                    AVAILABLE_SETS['100k'],
+                    AVAILABLE_SETS['200k'],
+                    AVAILABLE_SETS['300k'],
+                    AVAILABLE_SETS['500k'],
+                    AVAILABLE_SETS['1m'],
+                ]
+                break
+            elif s_clean in AVAILABLE_SETS:
+                spec.append(AVAILABLE_SETS[s_clean])
+            else:
+                raise ValueError(f"Unknown dataset set '{s}'. Available: {list(AVAILABLE_SETS.keys())} or 'all'")
 
     generate_large_scale_datasets(
         datasets_spec=spec,

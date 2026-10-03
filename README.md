@@ -2,18 +2,18 @@
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![Power System](https://img.shields.io/badge/Grid-IEEE%2014--Bus-success.svg)](#)
-[![Dataset](https://img.shields.io/badge/Cases-600%2C000%20(3%20Tiers)-orange.svg)](#3-large-scale-contingency-datasets-600k-cases)
+[![Dataset](https://img.shields.io/badge/Cases-2%2C100%2C000%20(5%20Tiers)-orange.svg)](#3-large-scale-contingency-datasets-21m-cases)
 [![Git LFS](https://img.shields.io/badge/Git-LFS%20Tracked-blueviolet.svg)](#5-git-lfs-tracking--dataset-access)
-[![Tests](https://img.shields.io/badge/Tests-Passing%20(9%2F9)-brightgreen.svg)](#8-test-suite--validation)
+[![Tests](https://img.shields.io/badge/Tests-Passing%20(10%2F10)-brightgreen.svg)](#9-test-suite--validation)
 
-A high-performance AC power flow simulation, N-1 contingency analysis, and large-scale synthetic dataset generation platform on the IEEE 14-bus transmission system. The framework integrates both a custom vectorized Newton-Raphson AC solver and a PyPOWER reference wrapper, realistic rejection-sampled load variation, rigorous grid security classification, and parallelized multi-dataset campaign generation producing **600,000 post-contingency cases** across 3 distinct tiers.
+A high-performance AC power flow simulation, N-1 contingency analysis, and large-scale synthetic dataset generation platform on the IEEE 14-bus transmission system. The framework integrates both a custom vectorized Newton-Raphson AC solver and a PyPOWER reference wrapper, realistic rejection-sampled load variation, rigorous grid security classification, and parallelized multi-dataset campaign generation producing **2,100,000 post-contingency cases** across 5 distinct tiers with **zero duplicate scenarios**.
 
 ---
 
 ## Table of Contents
 1. [Overview & Capabilities](#1-overview--capabilities)
 2. [Simulation Architecture & Mathematical Formulation](#2-simulation-architecture--mathematical-formulation)
-3. [Large-Scale Contingency Datasets (600k Cases)](#3-large-scale-contingency-datasets-600k-cases)
+3. [Large-Scale Contingency Datasets (2.1M Cases)](#3-large-scale-contingency-datasets-21m-cases)
 4. [Dataset Schema & Feature Definitions](#4-dataset-schema--feature-definitions)
 5. [Git LFS Tracking & Dataset Access](#5-git-lfs-tracking--dataset-access)
 6. [Codebase Architecture & File Reference](#6-codebase-architecture--file-reference)
@@ -34,7 +34,7 @@ This platform provides an end-to-end engineering framework for power flow analys
 * **Realistic Load Synthesis**: Rejection-sampled Latin-hypercube/uniform load multipliers ($\pm 20\%$) across all load buses, conditioned on pre-contingency AC power flow solvability and stability.
 * **Exhaustive N-1 Contingency Analysis**: Systematic single-line outage simulation across all 20 branches of the IEEE 14-bus network.
 * **Operational Security Labeling**: Standard multi-class classification into **Safe**, **Alert**, and **Critical** states based on IEEE voltage limits and line thermal MVA capacities.
-* **High-Throughput Multiprocessing**: Parallel batch execution across CPU worker pools with real-time progress bars, multi-dataset duplicate scenario prevention, and automated manifest auditing.
+* **High-Throughput Multiprocessing**: Parallel batch execution across CPU worker pools with real-time progress bars, multi-dataset duplicate scenario prevention, automated pool preloading, and manifest auditing.
 
 ---
 
@@ -46,7 +46,7 @@ This platform provides an end-to-end engineering framework for power flow analys
 flowchart TD
     A[IEEE 14-Bus Network Model] --> B[Load Perturbation Generator\nRejection Sampling 0.8 to 1.2x]
     B --> C[Intact Base-Case AC Load Flow\nPre-Contingency Solvability Filter]
-    C -->|Solvable & Stable| D[Scenario Pool Manager\n30,000 Unique Base Scenarios]
+    C -->|Solvable & Stable| D[Scenario Pool Manager\n105,000 Unique Base Scenarios]
     D --> E[N-1 Contingency Generator\n20 Single-Line Outages per Scenario]
     E --> F[Parallel AC Power Flow Engine\nCustom NR & PyPOWER Solvers]
     F --> G[Results Extractor\nVoltages, Angles, Branch Flows, Losses]
@@ -88,29 +88,33 @@ Each post-contingency operating state is evaluated against standard IEEE operati
 
 ---
 
-## 3. Large-Scale Contingency Datasets (600k Cases)
+## 3. Large-Scale Contingency Datasets (2.1M Cases)
 
-The repository contains **3 comprehensive dataset sets** located in `data/tabular/`, generated under strict non-overlapping scenario constraints:
+The repository contains **5 comprehensive dataset tiers** located in `data/tabular/`, generated under strict non-overlapping scenario constraints:
 * **Base Case Filtering**: Intact base-case rows are excluded from the contingency datasets per design; every row corresponds to an active post-contingency line outage response.
-* **Zero Duplication**: All 30,000 base loading scenarios are globally unique (verified by `data/tabular/sets_manifest.json`).
+* **Strict Mutual Exclusivity**: All 105,000 base loading scenarios are globally unique with **0 repeated scenarios** across any dataset (audited and verified by `data/tabular/sets_manifest.json`).
 
 | Dataset Tier | Destination Path | Scenarios | Line Outages / Scenario | Total Cases (Rows) | CSV File Size | JSON Pool Size |
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: |
 | **`dataset_100k`** | `data/tabular/dataset_100k/` | 5,000 | 20 | **100,000** | 91.04 MB | 20.48 MB |
 | **`dataset_200k`** | `data/tabular/dataset_200k/` | 10,000 | 20 | **200,000** | 182.08 MB | 40.96 MB |
 | **`dataset_300k`** | `data/tabular/dataset_300k/` | 15,000 | 20 | **300,000** | 273.11 MB | 61.44 MB |
-| **Grand Total** | — | **30,000** | **20** | **600,000** | **546.23 MB** | **122.88 MB** |
+| **`dataset_500k`** | `data/tabular/dataset_500k/` | 25,000 | 20 | **500,000** | 455.21 MB | 102.40 MB |
+| **`dataset_1M`**   | `data/tabular/dataset_1M/`   | 50,000 | 20 | **1,000,000** | 908.54 MB | 204.71 MB |
+| **Grand Total** | — | **105,000** | **20** | **2,100,000** | **1,910.0 MB** | **430.0 MB** |
 
 ### Label Distribution & Convergence Across Sets
 
-The datasets exhibit balanced, physically realistic distributions:
+The datasets exhibit balanced, physically realistic distributions across all 5 tiers:
 
 | Dataset | Total Rows | Converged | Non-Converged | Safe Cases (%) | Alert Cases (%) | Critical Cases (%) |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | **`dataset_100k`** | 100,000 | 95,000 (95.0%) | 5,000 (5.0%) | 36,659 (36.7%) | 28,667 (28.7%) | 34,674 (34.7%) |
 | **`dataset_200k`** | 200,000 | 190,000 (95.0%) | 10,000 (5.0%) | 73,796 (36.9%) | 56,852 (28.4%) | 69,352 (34.7%) |
 | **`dataset_300k`** | 300,000 | 285,000 (95.0%) | 15,000 (5.0%) | 109,893 (36.6%) | 86,057 (28.7%) | 104,050 (34.7%) |
-| **Combined** | **600,000** | **570,000 (95.0%)** | **30,000 (5.0%)** | **220,348 (36.7%)** | **171,576 (28.6%)** | **208,076 (34.7%)** |
+| **`dataset_500k`** | 500,000 | 475,000 (95.0%) | 25,000 (5.0%) | 183,399 (36.7%) | 143,312 (28.7%) | 173,289 (34.7%) |
+| **`dataset_1M`**   | 1,000,000 | 950,000 (95.0%) | 50,000 (5.0%) | 369,063 (36.9%) | 284,570 (28.5%) | 346,367 (34.6%) |
+| **Combined** | **2,100,000** | **1,995,000 (95.0%)** | **105,000 (5.0%)** | **772,810 (36.8%)** | **599,458 (28.5%)** | **727,732 (34.7%)** |
 
 > **Note on Non-Convergence**: In the IEEE 14-bus network, outages on specific radial or heavily loaded branches (such as line 1 connecting Bus 1 slack to Bus 2) cause severe voltage instability or islanding under stressed load conditions. These physically unsolvable states are captured faithfully, flagged with `convergence = False`, and classified as `Critical`.
 
@@ -153,7 +157,7 @@ Column 63     : Multi-Class Security Label
 
 ## 5. Git LFS Tracking & Dataset Access
 
-Because the dataset files exceed standard GitHub repository limits (up to 273 MB for individual CSV files), they are managed via **Git Large File Storage (Git LFS)**.
+Because the dataset files exceed standard GitHub repository limits (up to 908 MB for individual CSV files), they are managed via **Git Large File Storage (Git LFS)**.
 
 ### Git LFS Tracking Rules (`.gitattributes`)
 ```gitattributes
@@ -230,14 +234,22 @@ Contingency-Analysis-2/
 │       │   ├── dataset_300k.csv
 │       │   ├── dataset_300k_pool.json
 │       │   └── summary.json
-│       └── sets_manifest.json    # Audit manifest verifying 0 duplicate scenarios
+│       ├── dataset_500k/         # 500,000 cases (25,000 scenarios x 20 lines)
+│       │   ├── dataset_500k.csv
+│       │   ├── dataset_500k_pool.json
+│       │   └── summary.json
+│       ├── dataset_1M/           # 1,000,000 cases (50,000 scenarios x 20 lines)
+│       │   ├── dataset_1M.csv
+│       │   ├── dataset_1M_pool.json
+│       │   └── summary.json
+│       └── sets_manifest.json    # Audit manifest verifying 105,000 unique scenarios
 │
 ├── tests/
 │   ├── test_network.py           # Network loading and admittance tests
 │   ├── test_load_flow.py         # AC power flow solver verification
 │   ├── test_contingency.py       # Outage application and line tripping tests
 │   ├── test_dataset.py           # Dataset structure and schema tests
-│   └── test_dataset_sets.py      # Multi-dataset uniqueness tests
+│   └── test_dataset_sets.py      # Multi-dataset uniqueness & pool preloading tests
 │
 ├── run_base_cases.py             # Intact base-case load flow runner (Normal, Light, Heavy)
 ├── run_single_contingency.py     # Single-line outage diagnostic runner
@@ -292,7 +304,11 @@ python run_contingency_campaign.py --num_scenarios 20 --output_dir data/tabular/
 ### 8.4 Generate Large-Scale Multi-Dataset Campaigns
 To generate multi-tier datasets with parallel processing across CPU workers:
 ```bash
-python run_generate_dataset_sets.py --workers 12
+# Generate all 5 tiers (100k, 200k, 300k, 500k, 1M)
+python run_generate_dataset_sets.py --sets all --workers 12
+
+# Or generate specific sets (automatically preloading existing pools to guarantee 0 duplicates)
+python run_generate_dataset_sets.py --sets 500k 1m --workers 12
 ```
 
 ---
@@ -310,6 +326,6 @@ pytest tests/ -v
 * **`test_load_flow.py`**: Validates convergence of both the custom Newton-Raphson solver and PyPOWER on base cases.
 * **`test_contingency.py`**: Verifies branch removal, topology updates, and isolation handling.
 * **`test_dataset.py`**: Validates column schemas, data types, and non-empty outputs.
-* **`test_dataset_sets.py`**: Confirms zero duplicate scenario definitions across multi-dataset pools.
+* **`test_dataset_sets.py`**: Confirms zero duplicate scenario definitions across multi-dataset pools and verifies pool preloading.
 
-All 9 tests pass with 100% compliance.
+All 10 tests pass with 100% compliance.

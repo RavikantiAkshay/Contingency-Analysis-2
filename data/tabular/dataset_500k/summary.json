@@ -1,0 +1,18 @@
+{
+  "set_name": "dataset_500k",
+  "folder": "data\\tabular\\dataset_500k",
+  "dataset_csv": "data\\tabular\\dataset_500k\\dataset_500k.csv",
+  "scenario_pool_json": "data\\tabular\\dataset_500k\\dataset_500k_pool.json",
+  "num_scenarios": 25000,
+  "num_contingency_cases": 500000,
+  "total_rows": 500000,
+  "total_columns": 63,
+  "converged_cases": 475000,
+  "non_converged_cases": 25000,
+  "label_distribution": {
+    "Safe": 183399,
+    "Alert": 143312,
+    "Critical": 173289
+  },
+  "elapsed_seconds": 890.15
+}

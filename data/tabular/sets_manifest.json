@@ -1,11 +1,11 @@
 {
-  "timestamp": "2026-09-13 00:12:31",
-  "num_sets": 3,
-  "total_scenarios": 30000,
-  "total_cases": 600000,
-  "global_unique_scenarios": 32000,
-  "total_execution_time_seconds": 1757.44,
-  "total_execution_time_minutes": 29.29,
+  "timestamp": "2026-10-03 14:28:59",
+  "num_sets": 5,
+  "total_scenarios": 105000,
+  "total_cases": 2100000,
+  "global_unique_scenarios": 105000,
+  "latest_run_execution_time_seconds": 1645.9,
+  "latest_run_execution_time_minutes": 27.43,
   "sets": [
     {
       "set_name": "dataset_100k",
@@ -60,6 +60,42 @@
         "Critical": 104050
       },
       "elapsed_seconds": 1030.01
+    },
+    {
+      "set_name": "dataset_500k",
+      "folder": "data\\tabular\\dataset_500k",
+      "dataset_csv": "data\\tabular\\dataset_500k\\dataset_500k.csv",
+      "scenario_pool_json": "data\\tabular\\dataset_500k\\dataset_500k_pool.json",
+      "num_scenarios": 25000,
+      "num_contingency_cases": 500000,
+      "total_rows": 500000,
+      "total_columns": 63,
+      "converged_cases": 475000,
+      "non_converged_cases": 25000,
+      "label_distribution": {
+        "Safe": 183399,
+        "Alert": 143312,
+        "Critical": 173289
+      },
+      "elapsed_seconds": 890.15
+    },
+    {
+      "set_name": "dataset_1M",
+      "folder": "data\\tabular\\dataset_1M",
+      "dataset_csv": "data\\tabular\\dataset_1M\\dataset_1M.csv",
+      "scenario_pool_json": "data\\tabular\\dataset_1M\\dataset_1M_pool.json",
+      "num_scenarios": 50000,
+      "num_contingency_cases": 1000000,
+      "total_rows": 1000000,
+      "total_columns": 63,
+      "converged_cases": 950000,
+      "non_converged_cases": 50000,
+      "label_distribution": {
+        "Safe": 369063,
+        "Alert": 284570,
+        "Critical": 346367
+      },
+      "elapsed_seconds": 1643.01
     }
   ]
 }

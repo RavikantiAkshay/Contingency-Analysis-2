@@ -78,3 +78,30 @@ def test_multi_set_uniqueness_and_validation():
         assert len(loaded) == 1
         assert loaded[0]['load_pattern'] == {2: 1.1, 3: 0.9}
         assert isinstance(list(loaded[0]['load_pattern'].keys())[0], int)
+
+
+def test_load_existing_pools_into_registry():
+    from run_generate_dataset_sets import load_existing_pools_into_registry
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Create 2 subdirectories with pools
+        sub1 = os.path.join(tmpdir, "set1")
+        sub2 = os.path.join(tmpdir, "set2")
+        os.makedirs(sub1, exist_ok=True)
+        os.makedirs(sub2, exist_ok=True)
+
+        pool1 = [
+            {'scenario_id': 'sc1', 'load_pattern': {'2': 1.05, '3': 0.95}, 'contingencies': []}
+        ]
+        pool2 = [
+            {'scenario_id': 'sc2', 'load_pattern': {'4': 1.10, '5': 0.90}, 'contingencies': []}
+        ]
+        save_scenario_pool(pool1, os.path.join(sub1, "set1_pool.json"))
+        save_scenario_pool(pool2, os.path.join(sub2, "set2_pool.json"))
+
+        seen_patterns, summaries = load_existing_pools_into_registry(tmpdir)
+        assert len(seen_patterns) == 2
+        k1 = frozenset([(2, 1.05), (3, 0.95)])
+        k2 = frozenset([(4, 1.10), (5, 0.90)])
+        assert k1 in seen_patterns
+        assert k2 in seen_patterns
+
